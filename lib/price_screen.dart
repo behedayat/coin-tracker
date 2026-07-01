@@ -1,80 +1,63 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:coin_tracker_challenge/models/coin_model.dart';
 import 'package:coin_tracker_challenge/utilities/coin_data.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'dart:io' show Platform;
 
 class PriceScreen extends StatefulWidget {
+  const PriceScreen({super.key});
+
   @override
-  _PriceScreenState createState() => _PriceScreenState();
+  State<PriceScreen> createState() => _PriceScreenState();
 }
 
 class _PriceScreenState extends State<PriceScreen> {
   String selectedCurrency = 'USD';
+  List<CoinModel> coinsList = [];
 
-  //TODO: 2. Remove everything from the coinsList
-  List<CoinModel> coinsList = [
-    CoinModel(icon: 'btc', name: 'Bitcoin', price: 16800),
-    CoinModel(icon: 'eth', name: 'Ethereum', price: 1200),
-    CoinModel(icon: 'ltc', name: 'Litecoin', price: 62.5),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    getCoinsValue();
+  }
 
-  //TODO: 3. Create a function of type Future, called getCoinsValue
-  //TODO: 3.1 Use a try and catch block just make sure the code won't crash your app. Use the following links to learn more about Exception Handling in Dart.
-  // https://medium.com/run-dart/dart-dartlang-introduction-exception-handling-f9f088906f7c
-  // https://www.tutorialspoint.com/dart_programming/dart_programming_exceptions.htm
+  Future<void> getCoinsValue() async {
+    var data = await CoinData().getCoinData(selectedCurrency);
 
-  //TODO: 3.2 create a variable called data and assign it to what getCoinData from CoinData class returns
-  //TODO: 3.3 If the data was not null, call the setState function, and inside the function assign data to the coins List.
-
-  //TODO: 4. override the initState function, and inside the function call the getCoinsValue function.
+    setState(() {
+      coinsList = data;
+    });
+  }
 
   CupertinoPicker getCupertinoPicker() {
-    List<Text> pickerItems = [];
-    for (String currency in currenciesList) {
-      pickerItems.add(Text(currency));
-    }
     return CupertinoPicker(
       itemExtent: 32,
-      onSelectedItemChanged: (selectedIndex) {
-        //TODO: 6. Call the getCoinsValue, when an item is selected from the picker
+      onSelectedItemChanged: (index) {
+        selectedCurrency = currenciesList[index];
+        getCoinsValue();
       },
-      children: pickerItems,
+      children: currenciesList.map((e) => Text(e)).toList(),
     );
   }
 
-  InputDecorator getDropdownButton() {
-    List<DropdownMenuItem<String>> dropdownItems = [];
-    for (String currency in currenciesList) {
-      var newItem = DropdownMenuItem(
-        child: Text(currency),
-        value: currency,
-      );
-      dropdownItems.add(newItem);
-    }
-
-    return InputDecorator(
-      decoration: const InputDecoration(
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white24),
-        ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          isExpanded: true,
-          value: selectedCurrency,
-          items: dropdownItems,
-          onChanged: (value) {
-            setState(() {
-              selectedCurrency = value!;
-              //TODO: 5. Call the getCoinsValue, when an item is selected from the dropdown menu
-            });
-          },
-        ),
-      ),
+  DropdownButton<String> getDropdownButton() {
+    return DropdownButton<String>(
+      value: selectedCurrency,
+      isExpanded: true,
+      items: currenciesList
+          .map((value) => DropdownMenuItem(
+        value: value,
+        child: Text(value),
+      ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedCurrency = value!;
+        });
+        getCoinsValue();
+      },
     );
   }
 
@@ -83,75 +66,53 @@ class _PriceScreenState extends State<PriceScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-                flex: 5,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('images/coin.png', width: 100),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Coin Tracker',
-                      style: TextStyle(fontSize: 28),
-                    ),
-                  ],
-                )),
+          children: [
+            const Expanded(
+              flex: 5,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.currency_bitcoin, size: 80),
+                  SizedBox(height: 10),
+                  Text("Coin Tracker", style: TextStyle(fontSize: 24)),
+                ],
+              ),
+            ),
+
             Expanded(
               flex: 6,
-              child: ListView.separated(
-                itemBuilder: (BuildContext context, int index) {
+              child: coinsList.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.separated(
+                itemCount: coinsList.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
                   return ListTile(
-                    leading: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          //TODO: 7. use toLowerCase function on icon to lower case the icon name
-                          'images/${coinsList[index].icon}.png',
-                          width: 60,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          children: [
-                            const Text('1', style: TextStyle(fontSize: 18)),
-                            Text(
-                              coinsList[index].name,
-                              style: const TextStyle(color: Colors.white24),
-                            ),
-                          ],
-                        )
-                      ],
+                    leading: Image.asset(
+                      'images/${coinsList[index].icon}.png',
+                      width: 50,
                     ),
+                    title: Text(coinsList[index].name),
                     trailing: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           NumberFormat("#,###.0")
                               .format(coinsList[index].price),
-                          style: const TextStyle(fontSize: 18),
                         ),
-                        Text(
-                          selectedCurrency,
-                          style: const TextStyle(color: Colors.white24),
-                        ),
+                        Text(selectedCurrency),
                       ],
                     ),
                   );
                 },
-                separatorBuilder: (BuildContext context, int index) =>
-                    const Divider(),
-                itemCount: coinsList.length,
               ),
             ),
-            Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: Platform.isIOS ? 0 : 8.0),
-              height: Platform.isIOS ? 150 : 60,
-              child:
-                  Platform.isIOS ? getCupertinoPicker() : getDropdownButton(),
+
+            SizedBox(
+              height: kIsWeb ? 60 : 120,
+              child: kIsWeb
+                  ? getDropdownButton()
+                  : getCupertinoPicker(),
             ),
           ],
         ),
